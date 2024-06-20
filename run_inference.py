@@ -96,8 +96,12 @@ def main(
             (1-mask_opacity)*rgb_mask[motion_mask,:]+ mask_opacity*mask_color[None, None,:])
         rgb_mask = rgb_mask.astype(np.uint8)
         imageio.imwrite(path_out, rgb_mask)
+        print("1")
         print(rgb)
+        print("1")
+        print("2")
         print(rgb_mask)
+        print("2")
         print()
         if set_reference:
             set_reference = False
