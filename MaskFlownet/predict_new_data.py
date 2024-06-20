@@ -18,7 +18,7 @@ from moviepy.audio.AudioClip import AudioArrayClip
 
 import network.config
 from network import get_pipeline
-import path
+import MaskFlownet.path as path
 import logger
 import time
 
