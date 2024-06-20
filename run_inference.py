@@ -90,7 +90,9 @@ def main(
         actor_mask = None
         motion_mask, flow, uncertainty = segmenter.next_image(
             rgb, motion_threshold, set_reference, actor_mask)
+        print("motion_mask=",motion_mask)
         motion_mask = motion_mask > 0
+        print("motion_mask=", motion_mask)
         rgb_mask = rgb.astype(np.float32)
         rgb_mask[motion_mask,:] = (
             (1-mask_opacity)*rgb_mask[motion_mask,:]+ mask_opacity*mask_color[None, None,:])
