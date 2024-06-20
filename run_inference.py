@@ -74,7 +74,7 @@ def main(
     gpu -- run on a GPU (default False)
     debug -- debug mode (default False)
     """
-    mask_opacity = 0.7
+    mask_opacity = 0.9
     mask_color = np.array([0,255,0], dtype=np.float32)
     pathlib.Path(folder_out).mkdir(parents=True, exist_ok=True)
     filenames = sorted(os.listdir(folder_rgb))
