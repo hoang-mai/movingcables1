@@ -93,10 +93,12 @@ def main(
         motion_mask = motion_mask > 0
         rgb_mask = rgb.astype(np.float32)
         rgb_mask[motion_mask,:] = (
-            (1-mask_opacity)*rgb_mask[motion_mask,:]
-            + mask_opacity*mask_color[None, None,:])
+            (1-mask_opacity)*rgb_mask[motion_mask,:]+ mask_opacity*mask_color[None, None,:])
         rgb_mask = rgb_mask.astype(np.uint8)
         imageio.imwrite(path_out, rgb_mask)
+        print(rgb)
+        print(rgb_mask)
+        print()
         if set_reference:
             set_reference = False
         if progress_queue is not None:
