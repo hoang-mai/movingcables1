@@ -58,7 +58,7 @@ def get_flow_segmenter(method_name, gpu=False, debug=False):
 
 def main(
         method_name, folder_rgb, folder_out,
-        motion_threshold=2.5, gpu=False, debug=False, progress_queue=None,
+        motion_threshold=1, gpu=False, debug=False, progress_queue=None,
         resize=None):
     """Run motion segmentation evaluation and save the results.
     
@@ -74,7 +74,7 @@ def main(
     gpu -- run on a GPU (default False)
     debug -- debug mode (default False)
     """
-    mask_opacity = 0.9
+    mask_opacity = 0.7
     mask_color = np.array([0,255,0], dtype=np.float32)
     pathlib.Path(folder_out).mkdir(parents=True, exist_ok=True)
     filenames = sorted(os.listdir(folder_rgb))
@@ -88,8 +88,7 @@ def main(
         if resize is not None:
             rgb = cv2.resize(rgb, resize, interpolation=cv2.INTER_AREA)
         actor_mask = None
-        motion_mask, flow, uncertainty = segmenter.next_image(
-            rgb, motion_threshold, set_reference, actor_mask)
+        motion_mask, flow, uncertainty = segmenter.next_image(rgb, motion_threshold, set_reference, actor_mask)
         print("motion_mask=",motion_mask)
         motion_mask = motion_mask > 0
         print("motion_mask=", motion_mask)
