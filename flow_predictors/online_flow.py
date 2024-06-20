@@ -8,15 +8,16 @@ import numpy as np
 import cv2
 
 script_dir = os.path.dirname(inspect.getfile(inspect.currentframe()))
-mfn_repo_root = os.path.join(script_dir,"../MaskFlownet")
+mfn_repo_root = os.path.join(script_dir, "../MaskFlownet")
 sys.path.append(mfn_repo_root)
-import predict_new_data as predict_flow
-predict_flow.repoRoot = mfn_repo_root
+import MaskFlownet.predict_new_data as predict_flow
 
+predict_flow.repoRoot = mfn_repo_root
 
 
 class OnlineFlow():
     """Online optical flow prediction interface to MaskFlownet(S)(Prob)."""
+
     def __init__(
             self, gpu=False, args=None, probabilistic=False, small=False,
             finetuned=False):
@@ -36,7 +37,7 @@ class OnlineFlow():
         if args is not None:
             self.setup_pipeline(args)
             return
-        args = lambda:0
+        args = lambda: 0
         args.network = "MaskFlownet"
         args.gpu_device = ""
         if gpu:
@@ -46,39 +47,39 @@ class OnlineFlow():
         args.threads = 8
         if small:
             args.config = "MaskFlownet_S.yaml"
-            args.checkpoint = "dbbSep30"    # stage 3
+            args.checkpoint = "dbbSep30"  # stage 3
         else:
             args.config = "MaskFlownet.yaml"
             if finetuned:
                 # finetuned on MovingCables:
-                #args.checkpoint = "346Apr17-1717"
+                # args.checkpoint = "346Apr17-1717"
                 # finetuned on a mix of MovingCables, Sintel, KITTI, HD1K:
                 args.checkpoint = "975Apr26-1614"
             else:
-                args.checkpoint = "8caNov12"    # stage 6
+                args.checkpoint = "8caNov12"  # stage 6
         if probabilistic:
             args.network = "MaskFlownetProb"
             if small:
                 args.config = "MaskFlownetSProb.yaml"
-                #args.checkpoint = "376May03-1502"    # softplus stage 1
-                #args.checkpoint = "ba1Apr13-1948"    # stage 1
-                #args.checkpoint = "80cApr25-1625"    # stage 2
-                #args.checkpoint = "038May09-1453"    # stage 2 softplus
-                #args.checkpoint = "abaApr26-1816"    # stage 3
-                #args.checkpoint = "e75May11-0845"    # stage 3 softplus q=0.4
-                args.checkpoint = "b11May11-0920"    # stage 3 softplus q=None
+                # args.checkpoint = "376May03-1502"    # softplus stage 1
+                # args.checkpoint = "ba1Apr13-1948"    # stage 1
+                # args.checkpoint = "80cApr25-1625"    # stage 2
+                # args.checkpoint = "038May09-1453"    # stage 2 softplus
+                # args.checkpoint = "abaApr26-1816"    # stage 3
+                # args.checkpoint = "e75May11-0845"    # stage 3 softplus q=0.4
+                args.checkpoint = "b11May11-0920"  # stage 3 softplus q=None
             else:
                 args.config = "MaskFlownetProb.yaml"
-                #args.checkpoint = "0f6May06-2059"    # stage 6
+                # args.checkpoint = "0f6May06-2059"    # stage 6
                 if finetuned:
                     # finetuned on MovingCables:
-                    #args.checkpoint = "43eApr17-1653"
+                    # args.checkpoint = "43eApr17-1653"
                     # finetuned on a mix of MovingCables, Sintel, KITTI, HD1K:
                     args.checkpoint = "b1aApr25-1426"
                 else:
                     args.checkpoint = "99bMay18-1454"  # stage 6 softplus q=None
         self.setup_pipeline(args)
-        
+
     def setup_pipeline(self, args):
         """Load and initialize the MaskFlownet pipeline."""
         checkpoint, steps = predict_flow.find_checkpoint(args.checkpoint, args)
@@ -90,7 +91,7 @@ class OnlineFlow():
         print("MaskFlownet model instantiated.")
         self.pipe = predict_flow.load_checkpoint(self.pipe, config, checkpoint)
         print("MaskFlownet checkpoint loaded OK. Setup complete.")
-        
+
     def flow(self, img1, img2):
         """Return optical flow given a pair of BGR/RGB images."""
         res = predict_flow.predict_image_pair_flow(
