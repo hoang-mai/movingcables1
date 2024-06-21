@@ -413,7 +413,7 @@ while True:
     if steps <= 20 or steps % 50 == 0:
         train_avg.update(train_log)
         log.log('steps={}{}, total_time={:.2f}'.format(steps, ''.join([', {}={}'.format(k, v) for k, v in train_avg.average.items()]), total_time.average))
-
+    print(log)
     # do valiation
     if steps % validation_steps == 0 or steps <= 1:
         val_result = None
