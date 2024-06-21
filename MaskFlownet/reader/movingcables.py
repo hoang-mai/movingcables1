@@ -6,7 +6,7 @@ from .dataset_prefix import data_prefix
 
 
 # ======== PLEASE MODIFY ========
-mc_root = '/home/holesond/datasets/CableTAMP/moving_hoses/sampled_compositions_small'
+mc_root = '/kaggle/input/movingcables/MovingCables/sampled_compositions_small'
 
 
 

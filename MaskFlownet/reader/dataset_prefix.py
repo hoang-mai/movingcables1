@@ -4,8 +4,8 @@ data_prefix = None
 
 if os.path.isdir('/nfs/datasets'):
     data_prefix = r'/nfs/datasets'
-elif os.path.isdir('/home/holesond/datasets'):
-    data_prefix = r'/home/holesond/datasets'
+elif os.path.isdir('/kaggle/input/'):
+    data_prefix = r'/kaggle/input/'
 else:
     raise RuntimeError("MaskFlownet reader could not find any "
         "dataset folder.")
