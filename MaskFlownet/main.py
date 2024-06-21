@@ -199,199 +199,7 @@ validation_datasets = {}
 samples = 32 if args.debug else -1
 t0 = default_timer()
 
-if dataset_cfg.dataset.value == 'kitti':
-    batch_size = 4
-    print('loading kitti dataset ...')
-    sys.stdout.flush()
-
-    orig_shape = dataset_cfg.orig_shape.get([370, 1224])
-    resize_shape = (orig_shape[1], orig_shape[0])
-    parts = 'mixed' if dataset_cfg.train_all.get(False) else 'train'
-
-    # training
-    dataset = kitti.read_dataset(editions = 'mixed', parts = parts, samples = samples, resize = resize_shape)
-    trainSize = len(dataset['flow'])
-    training_datasets = [(dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])] * batch_size
-
-    # validation
-    validationSize = 0
-    dataset = kitti.read_dataset(editions = '2012', parts = 'valid', samples = samples, resize = resize_shape)
-    validationSize += len(dataset['flow'])
-    validation_datasets['kitti.12'] = (dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])
-    dataset = kitti.read_dataset(editions = '2015', parts = 'valid', samples = samples, resize = resize_shape)
-    validationSize += len(dataset['flow'])
-    validation_datasets['kitti.15'] = (dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])
-
-elif dataset_cfg.dataset.value == 'sintel':
-    batch_size = 4
-    print('loading sintel dataset ...')
-    sys.stdout.flush()
-
-    orig_shape = [436, 1024]
-    num_kitti = dataset_cfg.kitti.get(0)
-    num_hd1k = dataset_cfg.hd1k.get(0)
-    subsets = ('training' if dataset_cfg.train_all.get(False) else 'training1', 'training2')
-
-    # training
-    trainImg1 = []
-    trainImg2 = []
-    trainFlow = []
-    trainMask = []
-    sintel_dataset = sintel.list_data()
-    for k, dataset in sintel_dataset[subsets[0]].items():
-        dataset = dataset[:samples]
-        img1, img2, flow, mask = [[sintel.load(p) for p in data] for data in zip(*dataset)]
-        trainImg1.extend(img1)
-        trainImg2.extend(img2)
-        trainFlow.extend(flow)
-        trainMask.extend(mask)
-    trainSize = len(trainMask)
-    training_datasets = [(trainImg1, trainImg2, trainFlow, trainMask)] * (batch_size - num_kitti - num_hd1k)
-
-    resize_shape = (1024, dataset_cfg.resize_shape.get(436))
-    if num_kitti > 0:
-        print('loading kitti dataset ...')
-        sys.stdout.flush()
-        editions = '2015'
-        dataset = kitti.read_dataset(resize = resize_shape, samples = samples, editions = editions)
-        trainSize += len(dataset['flow'])
-        training_datasets += [(dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])] * num_kitti
-
-    if num_hd1k > 0:
-        print('loading hd1k dataset ...')
-        sys.stdout.flush()
-        dataset = hd1k.read_dataset(resize = resize_shape, samples = samples)
-        trainSize += len(dataset['flow'])
-        training_datasets += [(dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])] * num_hd1k
-
-    # validation
-    validationSize = 0
-    for k, dataset in sintel_dataset[subsets[1]].items():
-        dataset = dataset[:samples]
-        img1, img2, flow, mask = [[sintel.load(p) for p in data] for data in zip(*dataset)]
-        validationSize += len(flow)
-        validation_datasets['sintel.' + k] = (img1, img2, flow, mask)
-
-elif dataset_cfg.dataset.value == 'things3d':
-    batch_size = 4
-    print('loading things3d dataset ...')
-    sub_type = dataset_cfg.sub_type.get('clean')
-    print('sub_type: ' + sub_type)
-    sys.stdout.flush()
-
-    orig_shape = [540, 960]
-    # %%%% WARNING %%%%
-    # the things3d dataset (subset) is very large
-    # therefore, the flow is converted to float16 by default
-    # in float16 format, the complete dataset is about 400 GB
-    # please set proper args.shard according to your device
-    # for example, if args.shard = 4, then one fourth of data is loaded
-
-    # training
-    things3d_dataset = things3d.list_data(sub_type = sub_type)
-    print(len(things3d_dataset['flow']))
-    print(len(things3d_dataset['flow'][:samples:args.shard]))
-    print(things3d_dataset['flow'][0])
-    from pympler.asizeof import asizeof
-    
-    trainFlow = [things3d.load(file).astype('float16') for file in things3d_dataset['flow'][:samples:args.shard]]
-    count_not_finite = 0
-    to_remove = []
-    for i,trfl in enumerate(trainFlow):
-        if not np.all(np.isfinite(trfl)):
-            count_not_finite += 1
-            to_remove.append(i)
-    print("Flows not finite {:d} out of total {:d}.".format(count_not_finite, len(trainFlow)))
-    to_remove = set(to_remove)
-    trainFlow = [trfl for i,trfl in enumerate(trainFlow) if i not in to_remove]
-    print(asizeof(trainFlow[0]))
-    print(asizeof(trainFlow))
-    
-    filtered_image_0 = [fn for i,fn in enumerate(things3d_dataset['image_0'][:samples:args.shard]) if i not in to_remove]
-    filtered_image_1 = [fn for i,fn in enumerate(things3d_dataset['image_1'][:samples:args.shard]) if i not in to_remove]
-    
-    # cv2.imread(file).astype('uint8') read BGR
-    # imageio.imread(file,pilmode="RGB",as_gray=False).astype('uint8') reads RGB
-    trainImg1 = [cv2.imread(file).astype('uint8') for file in filtered_image_0]
-    print(asizeof(trainImg1[0]))
-    print(asizeof(trainImg1))
-    trainImg2 = [cv2.imread(file).astype('uint8') for file in filtered_image_1]
-    print(asizeof(trainImg2[0]))
-    print(asizeof(trainImg2))
-    
-    
-    trainSize = len(trainFlow)
-    training_datasets = [(trainImg1, trainImg2, trainFlow)] * batch_size
-    print(asizeof(training_datasets))
-
-    # validation- chairs
-    _, validationSet = trainval.read(chairs_split_file)
-    validationSet = validationSet[:samples]
-    validationImg1 = [ppm.load(os.path.join(chairs_path, '%05d_img1.ppm' % i)) for i in validationSet]
-    validationImg2 = [ppm.load(os.path.join(chairs_path, '%05d_img2.ppm' % i)) for i in validationSet]
-    validationFlow = [flo.load(os.path.join(chairs_path, '%05d_flow.flo' % i)) for i in validationSet]
-    validationSize = len(validationFlow)
-    validation_datasets['chairs'] = (validationImg1, validationImg2, validationFlow)
-
-    '''
-    # validation- sintel
-    sintel_dataset = sintel.list_data()
-    divs = ('training',) if not getattr(config.network, 'class').get() == 'MaskFlownet' else ('training2',)
-    for div in divs:
-            for k, dataset in sintel_dataset[div].items():
-                    img1, img2, flow, mask = [[sintel.load(p) for p in data] for data in zip(*dataset)]
-                    validationSize += len(flow)
-                    validation_datasets['sintel.' + k] = (img1, img2, flow, mask)
-
-    # validation- kitti
-    for kitti_version in ('2012', '2015'):
-            dataset = kitti.read_dataset(editions = kitti_version, crop = (370, 1224))
-            validationSize += len(dataset['flow'])
-            validation_datasets['kitti.' + kitti_version] = (dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])
-    '''
-
-elif dataset_cfg.dataset.value == 'chairs':
-    batch_size = 8
-    print('loading chairs data ...')
-    sys.stdout.flush()
-
-    orig_shape = [384, 512]
-    trainSet, validationSet = trainval.read(chairs_split_file)
-
-    # training
-    trainSet = trainSet[:samples]
-    
-    if args.chairs_hdd:
-        trainImg1 = [functools.partial(ppm.load,os.path.join(chairs_path, '%05d_img1.ppm' % i)) for i in trainSet]
-        trainImg2 = [functools.partial(ppm.load,os.path.join(chairs_path, '%05d_img2.ppm' % i)) for i in trainSet]
-        trainFlow = [functools.partial(flo.load,os.path.join(chairs_path, '%05d_flow.flo' % i)) for i in trainSet]
-    else:
-        trainImg1 = [ppm.load(os.path.join(chairs_path, '%05d_img1.ppm' % i)) for i in trainSet]
-        trainImg2 = [ppm.load(os.path.join(chairs_path, '%05d_img2.ppm' % i)) for i in trainSet]
-        trainFlow = [flo.load(os.path.join(chairs_path, '%05d_flow.flo' % i)) for i in trainSet]
-    trainSize = len(trainFlow)
-    training_datasets = [(trainImg1, trainImg2, trainFlow)] * batch_size
-
-    # validaion- chairs
-    validationSet = validationSet[:samples]
-    validationImg1 = [ppm.load(os.path.join(chairs_path, '%05d_img1.ppm' % i)) for i in validationSet]
-    validationImg2 = [ppm.load(os.path.join(chairs_path, '%05d_img2.ppm' % i)) for i in validationSet]
-    validationFlow = [flo.load(os.path.join(chairs_path, '%05d_flow.flo' % i)) for i in validationSet]
-    validationSize = len(validationFlow)
-    validation_datasets['chairs'] = (validationImg1, validationImg2, validationFlow)
-
-    # validaion- sintel
-    sintel_dataset = sintel.list_data()
-    divs = ('training',) if not (getattr(config.network, 'class').get() == 'MaskFlownet' or
-        getattr(config.network, 'class').get() == 'MaskFlownetProb') else ('training2',)
-    for div in divs:
-        for k, dataset in sintel_dataset[div].items():
-            dataset = dataset[:samples]
-            img1, img2, flow, mask = [[sintel.load(p) for p in data] for data in zip(*dataset)]
-            validationSize += len(flow)
-            validation_datasets['sintel.' + k] = (img1, img2, flow, mask)
-
-elif dataset_cfg.dataset.value == 'movingcables':
+if dataset_cfg.dataset.value == 'movingcables':
     batch_size = 4
     print('loading movingcables dataset ...')
     sys.stdout.flush()
@@ -422,41 +230,6 @@ elif dataset_cfg.dataset.value == 'movingcables':
     subsets = ('training' if dataset_cfg.train_all.get(False) else 'training1', 'training2')
     
     #resize_shape = (1024, dataset_cfg.resize_shape.get(436))
-    if num_sintel > 0:
-        print('loading sintel dataset ...')
-        # training
-        trainImg1 = []
-        trainImg2 = []
-        trainFlow = []
-        trainMask = []
-        sintel_dataset = sintel.list_data()
-        for k, dataset in sintel_dataset[subsets[0]].items():
-            dataset = dataset[:samples]
-            img1, img2, flow, mask = [
-                [sintel.load(p, resize=resize_shape) for p in data]
-                for data in zip(*dataset)]
-            trainImg1.extend(img1)
-            trainImg2.extend(img2)
-            trainFlow.extend(flow)
-            trainMask.extend(mask)
-        trainSize += len(trainMask)
-        training_datasets += [(trainImg1, trainImg2, trainFlow, trainMask)] * num_sintel
-
-    if num_kitti > 0:
-        print('loading kitti dataset ...')
-        sys.stdout.flush()
-        editions = '2015'
-        dataset = kitti.read_dataset(resize = resize_shape, samples = samples, editions = editions)
-        trainSize += len(dataset['flow'])
-        training_datasets += [(dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])] * num_kitti
-
-    if num_hd1k > 0:
-        print('loading hd1k dataset ...')
-        sys.stdout.flush()
-        dataset = hd1k.read_dataset(resize = resize_shape, samples = samples)
-        trainSize += len(dataset['flow'])
-        training_datasets += [(dataset['image_0'], dataset['image_1'], dataset['flow'], dataset['occ'])] * num_hd1k
-
 else:
     raise NotImplementedError
 
@@ -484,13 +257,7 @@ import augmentation
 
 # chromatic augmentation
 aug_func = augmentation.ColorAugmentation
-if dataset_cfg.dataset.value == 'sintel':
-    color_aug = aug_func(contrast_range=(-0.4, 0.8), brightness_sigma=0.1, channel_range=(0.8, 1.4), batch_size=batch_size_card,
-            shape=target_shape, noise_range=(0, 0), saturation=0.5, hue=0.5, eigen_aug = False)
-elif dataset_cfg.dataset.value == 'kitti':
-    color_aug = aug_func(contrast_range=(-0.2, 0.4), brightness_sigma=0.05, channel_range=(0.9, 1.2), batch_size=batch_size_card,
-            shape=target_shape, noise_range=(0, 0.02), saturation=0.25, hue=0.1, gamma_range=(-0.5, 0.5), eigen_aug = False)
-elif dataset_cfg.dataset.value == 'movingcables':
+if dataset_cfg.dataset.value == 'movingcables':
     color_aug = aug_func(
         contrast_range=(-0.2, 0.4),
         brightness_sigma=0.05,
@@ -500,25 +267,12 @@ elif dataset_cfg.dataset.value == 'movingcables':
         noise_range=(0, 0.02),
         saturation=0.25, hue=0.1,
         gamma_range=(-0.5, 0.5), eigen_aug = False)
-else:
-    color_aug = aug_func(contrast_range=(-0.4, 0.8), brightness_sigma=0.1, channel_range=(0.8, 1.4), batch_size=batch_size_card,
-            shape=target_shape, noise_range=(0, 0.04), saturation=0.5, hue=0.5, eigen_aug = False)
 color_aug.hybridize()
 
 # geometric augmentation
 aug_func = augmentation.GeometryAugmentation
-if dataset_cfg.dataset.value == 'sintel':
-    geo_aug = aug_func(angle_range=(-17, 17), zoom_range=(1 / 1.5, 1 / 0.9), aspect_range=(0.9, 1 / 0.9), translation_range=0.1,
-                                                                                    target_shape=target_shape, orig_shape=orig_shape, batch_size=batch_size_card,
-                                                                                    relative_angle=0.25, relative_scale=(0.96, 1 / 0.96), relative_translation=0.25
-                                                                                    )
-elif dataset_cfg.dataset.value == 'kitti':
-    geo_aug = aug_func(angle_range=(-5, 5), zoom_range=(1 / 1.25, 1 / 0.95), aspect_range=(0.95, 1 / 0.95), translation_range=0.05,
-                                                                                    target_shape=target_shape, orig_shape=orig_shape, batch_size=batch_size_card,
-                                                                                    relative_angle=0.25, relative_scale=(0.98, 1 / 0.98), relative_translation=0.25
-                                                                                    )
-else:
-    geo_aug = aug_func(angle_range=(-17, 17), zoom_range=(0.5, 1 / 0.9), aspect_range=(0.9, 1 / 0.9), translation_range=0.1,
+
+geo_aug = aug_func(angle_range=(-17, 17), zoom_range=(0.5, 1 / 0.9), aspect_range=(0.9, 1 / 0.9), translation_range=0.1,
                                                                                     target_shape=target_shape, orig_shape=orig_shape, batch_size=batch_size_card,
                                                                                     relative_angle=0.25, relative_scale=(0.96, 1 / 0.96), relative_translation=0.25
                                                                                     )
