@@ -12,7 +12,7 @@ from reader.dataset_prefix import data_prefix
 
 # ======== PLEASE MODIFY ========
 # where is the repo
-repoRoot = r'.'
+repoRoot = r'\kaggle\working\movingcables1\MaskFlownet'
 # to CUDA\vX.Y\bin
 os.environ['PATH'] = r'path\to\your\NVIDIA GPU Computing Toolkit\CUDA\v9.0\bin' + ';' + os.environ['PATH']
 # Flying Chairs Dataset
