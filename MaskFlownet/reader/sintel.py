@@ -9,7 +9,7 @@ from .dataset_prefix import data_prefix
 
 # ======== PLEASE MODIFY ========
 sintel_root = os.path.join(data_prefix,r'Sintel')
-split_file = r'Sintel_train_val_maskflownet.txt' # r'path\to\your\Sintel\Sintel_train_val_maskflownet.txt'
+split_file = r'/kaggle/working/movingcables1/MaskFlownet/Sintel_train_val_maskflownet.txt' # r'path\to\your\Sintel\Sintel_train_val_maskflownet.txt'
 
 def list_data(path = None):
     if path is None:
