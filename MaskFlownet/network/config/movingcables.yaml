@@ -8,13 +8,13 @@ dataset:
   movingcables
 
 sintel:
-  1
+  0
 
 kitti:
-  1
+  0
 
 hd1k:
-  1
+  0
 
 target_shape:
   [384, 640]
